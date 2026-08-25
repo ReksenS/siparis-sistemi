@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gelişmiş Sipariş & Kasa Takip Sistemi</title>
+  <title>Sipariş & Kasa Takip Sistemi</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 12px; background: #eceff1; margin: 0; color: #333; }
     .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -39,7 +39,7 @@
   <!-- ÜST SEKMELER -->
   <div class="tabs">
     <button class="tab-btn active" onclick="sekmeDegistir('siparis')">Sipariş Al</button>
-    <button class="tab-btn" onclick="sekmeDegistir('liste')">Giden Siparişler</button>
+    <button class="tab-btn" onclick="sekmeDegistir('liste')">Giden Siparişler 🔒</button>
     <button class="tab-btn" onclick="sekmeDegistir('kasa')">Kasa & Rapor</button>
     <button class="tab-btn" onclick="sekmeDegistir('rehber')">Rehber & Adresler</button>
   </div>
@@ -47,8 +47,8 @@
   <!-- 1. SEKME: SİPARİŞ ALMA EKRANI -->
   <div id="sekme-siparis">
     <div class="box">
-      <h3>1. Adres & Müşteri Seçimi</h3>
-      <input type="text" id="adres" autocomplete="off" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
+      <h3>1. Adres & Müşteri</h3>
+      <input type="text" id="adres" autocomplete="off" placeholder="Adres / Müşteri Adı" oninput="adresSecildi()">
 
       <!-- Adrese ait kayıtlı telefonlar ve silme -->
       <div id="kayitliNumaralarKutusu" style="display:none; margin-top:5px;">
@@ -58,30 +58,29 @@
           <button type="button" class="delete-btn" onclick="seciliNumarayiSil()">Bu Numarayı Sil</button>
         </div>
       </div>
-      <input type="tel" id="tel" placeholder="Telefon Numarası (Yeni ise yazın)">
+      <input type="tel" id="tel" placeholder="Telefon Numarası">
     </div>
 
     <div class="box">
       <h3>2. Sipariş Metni</h3>
-      <textarea id="siparisMetni" rows="6" placeholder="Örnek:&#10;2 adana kebap&#10;1 künefe&#10;2 ayran&#10;not: acılı olsun"></textarea>
+      <textarea id="siparisMetni" rows="6" placeholder="Sipariş Kalemleri"></textarea>
     </div>
 
     <div class="box">
       <h3>3. Hesaplama, Kişi Sayısı & İskonto</h3>
       <div class="row">
-        <input type="number" id="kisiSayisi" placeholder="Kişi Sayısı (Örn: 40)" oninput="tutarHesapla()">
-        <input type="number" id="kisiBasiFiyat" placeholder="Kişi Başı TL (Örn: 250)" oninput="tutarHesapla()">
+        <input type="number" id="kisiSayisi" placeholder="Kişi Sayısı" oninput="tutarHesapla()">
+        <input type="number" id="kisiBasiFiyat" placeholder="Kişi Başı TL" oninput="tutarHesapla()">
       </div>
       <div class="row">
-        <input type="number" id="hamTutar" placeholder="Sistem Tutarı (TL)" oninput="tutarGuncelle()">
-        <input type="number" id="netTutar" placeholder="İskontolu Net Tutar (TL)" style="font-weight:bold; color:#d32f2f;">
+        <input type="number" id="hamTutar" placeholder="Tutar (TL)" oninput="tutarGuncelle()">
+        <input type="number" id="netTutar" placeholder="Net Tutar (TL)" style="font-weight:bold; color:#d32f2f;">
       </div>
     </div>
 
     <div class="box">
       <h3>4. Ödeme & Özel Durumlar</h3>
       
-      <!-- Ödeme Yöntemi -->
       <div id="odemeTipiKutusu">
         <label style="font-size:13px; font-weight:bold;">Ödeme Yöntemi:</label>
         <select id="odemeTipi">
@@ -97,10 +96,9 @@
       </div>
 
       <div class="row" style="margin-top:6px;">
-        <input type="time" id="teslimSaati" placeholder="İleri Saat Teslimatı">
+        <input type="time" id="teslimSaati" placeholder="Teslim Saati">
       </div>
 
-      <!-- Veresiye Seçeneği ve Normal Ödeme Toggle -->
       <div style="background:#fff3e0; padding:10px; border-radius:6px; margin:8px 0; border:1px solid #ffe0b2;">
         <div class="check-row" style="margin:0;">
           <input type="checkbox" id="chkVeresiye" onchange="veresiyeKutusuDegisti()">
@@ -130,11 +128,31 @@
     </div>
   </div>
 
-  <!-- 2. SEKME: GİDEN SİPARİŞLER -->
+  <!-- 2. SEKME: GİDEN SİPARİŞLER (ŞİFRELİ) -->
   <div id="sekme-liste" style="display:none;">
-    <div class="box">
-      <h3>Bugün Giden Siparişler (Eskiden Yeniye)</h3>
-      <div id="siparisListesiKutusu">Henüz sipariş yok.</div>
+    <div id="listeSifreKutusu" class="box" style="text-align:center; max-width:400px; margin:20px auto;">
+      <h3 style="color:#d32f2f; margin-top:0;">🔒 Yetkili Girişi</h3>
+      <p style="font-size:14px; color:#666;">Kurye fişlerini görmek için 6 haneli şifreyi girin:</p>
+      <input type="password" id="girilenSifre" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="Şifre" style="text-align:center; font-size:20px; letter-spacing:4px;">
+      <button class="action" style="background:#2e7d32;" onclick="sifreKontrolEt()">GİRİŞ YAP</button>
+    </div>
+
+    <div id="listeIcerik" style="display:none;">
+      <div class="box" style="background:#e8f5e9; border:1px solid #c8e6c9;">
+        <h4 style="margin:0 0 6px 0; color:#2e7d32;">🔑 Yeni 6 Haneli Şifre Belirle</h4>
+        <div class="row">
+          <input type="password" id="yeniSifreInput" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="Yeni Şifre">
+          <button type="button" style="background:#2e7d32; color:white; font-weight:bold; width:auto; padding:0 15px;" onclick="yeniSifreKaydet()">KAYDET</button>
+        </div>
+      </div>
+
+      <div class="box">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;">Bugün Giden Siparişler</h3>
+          <button class="delete-btn" style="background:#546e7a;" onclick="listeyiKilitle()">Sayfayı Kilitle</button>
+        </div>
+        <div id="siparisListesiKutusu" style="margin-top:10px;">Henüz sipariş yok.</div>
+      </div>
     </div>
   </div>
 
@@ -143,8 +161,8 @@
     <div class="box">
       <h3>Kasa ve Gün Sonu Raporu</h3>
       <div class="report-box" id="kasaOzeti">Hesaplanıyor...</div>
-      <button style="background:#0288d1; color:white;" onclick="araRaporAl()">Öğle/Akşam Ara Raporunu Al (Saat 18-20)</button>
-      <button style="background:#d32f2f; color:white; margin-top:8px;" onclick="geceKapanisYap()">Gece Kapanışı Yap (12:30)</button>
+      <button style="background:#0288d1; color:white;" onclick="araRaporAl()">Ara Rapor Al</button>
+      <button style="background:#d32f2f; color:white; margin-top:8px;" onclick="geceKapanisYap()">Gece Kapanışı Yap</button>
     </div>
   </div>
 
@@ -152,7 +170,7 @@
   <div id="sekme-rehber" style="display:none;">
     <div class="box" style="border: 2px solid #1976d2;">
       <h3 style="margin-top:0; color:#1976d2;">Yeni Adres & Müşteri Kaydet</h3>
-      <input type="text" id="yeniAdres" placeholder="Adres / Firma Adı (Örn: Çevre 3-5, Ali Raif)">
+      <input type="text" id="yeniAdres" placeholder="Adres / Firma Adı">
       <input type="tel" id="yeniTel" placeholder="Telefon Numarası">
       
       <label style="font-size:13px; font-weight:bold; margin-top:5px; display:block;">Müşteri / Hesap Türü:</label>
@@ -164,7 +182,7 @@
       </select>
 
       <div id="yeniKisiFiyatAlani" style="display:none; margin-top:5px;">
-        <input type="number" id="yeniKisiBasiFiyat" placeholder="Anlaşmalı Kişi Başı Tutar (TL)">
+        <input type="number" id="yeniKisiBasiFiyat" placeholder="Kişi Başı Tutar (TL)">
       </div>
 
       <button style="background:#2e7d32; color:white; font-weight:bold; margin-top:8px;" onclick="manuelMusteriEkle()">REHBERE KAYDET</button>
@@ -185,6 +203,7 @@
 
     let hazirlananSiparis = null;
     let hazirlananFisMetni = "";
+    let listeKilitAcik = false;
 
     function sekmeDegistir(sekme) {
       document.getElementById('sekme-siparis').style.display = sekme === 'siparis' ? 'block' : 'none';
@@ -201,9 +220,50 @@
         );
       });
 
-      if (sekme === 'liste') gidenSiparisleriListele();
+      if (sekme === 'liste') {
+        if (!listeKilitAcik) {
+          document.getElementById('listeSifreKutusu').style.display = 'block';
+          document.getElementById('listeIcerik').style.display = 'none';
+          document.getElementById('girilenSifre').value = '';
+        } else {
+          gidenSiparisleriListele();
+        }
+      }
       if (sekme === 'kasa') kasaRaporuGoster();
       if (sekme === 'rehber') rehberiListele();
+    }
+
+    function sifreKontrolEt() {
+      const girilen = document.getElementById('girilenSifre').value.trim();
+      const kayitliSifre = localStorage.getItem('kuryeFisSifresi') || "123456";
+
+      if (girilen === kayitliSifre) {
+        listeKilitAcik = true;
+        document.getElementById('listeSifreKutusu').style.display = 'none';
+        document.getElementById('listeIcerik').style.display = 'block';
+        gidenSiparisleriListele();
+      } else {
+        alert("Hatalı şifre!");
+        document.getElementById('girilenSifre').value = '';
+      }
+    }
+
+    function yeniSifreKaydet() {
+      const yeni = document.getElementById('yeniSifreInput').value.trim();
+      if (/^\d{6}$/.test(yeni)) {
+        localStorage.setItem('kuryeFisSifresi', yeni);
+        alert("Yeni şifre kaydedildi.");
+        document.getElementById('yeniSifreInput').value = '';
+      } else {
+        alert("Lütfen 6 haneli sayısal bir şifre girin.");
+      }
+    }
+
+    function listeyiKilitle() {
+      listeKilitAcik = false;
+      document.getElementById('listeSifreKutusu').style.display = 'block';
+      document.getElementById('listeIcerik').style.display = 'none';
+      document.getElementById('girilenSifre').value = '';
     }
 
     function yeniMusteriTipiDegisti() {
@@ -219,7 +279,7 @@
       const kisiFiyat = parseFloat(document.getElementById('yeniKisiBasiFiyat').value) || 0;
 
       if (!adres) {
-        alert("Lütfen bir adres veya firma adı yazın!");
+        alert("Lütfen bir adres veya müşteri adı yazın.");
         return;
       }
 
@@ -238,7 +298,7 @@
       }
 
       localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-      alert(`"${adres}" başarıyla rehbere kaydedildi!`);
+      alert("Kayıt eklendi.");
 
       document.getElementById('yeniAdres').value = '';
       document.getElementById('yeniTel').value = '';
@@ -257,7 +317,6 @@
       if (db[girilenAdres]) {
         const kayit = db[girilenAdres];
         
-        // Telefonları Listele
         if (kayit.telefonlar && kayit.telefonlar.length > 0) {
           numaraSelect.innerHTML = '';
           kayit.telefonlar.forEach(t => {
@@ -272,13 +331,11 @@
           numaraKutusu.style.display = 'none';
         }
 
-        // Veresiye Durumu Kontrolü (Veresiye veya Tosuncu+Veresiye ise)
         const isVeresiye = (kayit.tip === 'VERESIYE' || kayit.tip === 'TOSUNCU_VERESIYE');
         document.getElementById('chkVeresiye').checked = isVeresiye;
         document.getElementById('btnNormalOde').style.display = isVeresiye ? 'block' : 'none';
         document.getElementById('odemeTipiKutusu').style.display = isVeresiye ? 'none' : 'block';
 
-        // Kişi Başı Ücret Kontrolü (Tosuncu veya Tosuncu+Veresiye ise)
         if ((kayit.tip === 'TOSUNCU' || kayit.tip === 'TOSUNCU_VERESIYE') && kayit.kisiBasi > 0) {
           document.getElementById('kisiBasiFiyat').value = kayit.kisiBasi;
         }
@@ -297,7 +354,6 @@
       document.getElementById('chkVeresiye').checked = false;
       document.getElementById('odemeTipiKutusu').style.display = 'block';
       document.getElementById('btnNormalOde').style.display = 'none';
-      alert("Bu sipariş normal tahsilat olarak ayarlandı (Kapıda POS/Nakit alınacak).");
     }
 
     function numaraSecildi() {
@@ -313,7 +369,6 @@
       if (db[girilenAdres] && silinecekTel) {
         db[girilenAdres].telefonlar = db[girilenAdres].telefonlar.filter(t => t !== silinecekTel);
         localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-        alert(silinecekTel + " silindi.");
         document.getElementById('tel').value = '';
         adresSecildi();
       }
@@ -365,10 +420,9 @@
     }
 
     function tumRehberiTemizle() {
-      if (confirm("DİKKAT: Kayıtlı tüm rehber silinecek. Onaylıyor musunuz?")) {
+      if (confirm("Kayıtlı tüm rehber silinecek. Onaylıyor musunuz?")) {
         localStorage.removeItem('musteriVeritabani');
         rehberiListele();
-        alert("Tüm rehber temizlendi.");
       }
     }
 
@@ -399,7 +453,7 @@
       const isFiyatGizle = document.getElementById('chkFiyatGizle').checked;
 
       if (!adres || !siparisMetni) {
-        alert("Lütfen en azından adres ve sipariş kalemlerini girin!");
+        alert("Lütfen adres ve sipariş bilgilerini girin.");
         return;
       }
 
@@ -491,10 +545,8 @@
       siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
-      // 1. Kasa / Kurye Yazıcısına Bas
       termalYaziciyaGonder(IP_KASA, hazirlananFisMetni);
 
-      // 2. Veresiye İse: Ayrı Veresiye / Muhasebe Yazıcısına Fırlat
       if (hazirlananSiparis.veresiye) {
         let muhasebeFisi = `=== VERESIYE / MUHASEBE ARSIV ===\n` + hazirlananFisMetni;
         termalYaziciyaGonder(IP_VERESIYE, muhasebeFisi);
@@ -591,13 +643,13 @@
 
     function araRaporAl() {
       kasaRaporuGoster();
-      alert("Öğle/Akşam ara raporu hesaplandı. Kuryelerden dönen fişleri kontrol edebilirsiniz.");
+      alert("Ara rapor hesaplandı.");
     }
 
     function geceKapanisYap() {
       if (confirm("Günü kapatmak ve bugünün siparişlerini sıfırlamak istiyor musunuz?")) {
         localStorage.removeItem('gunlukSiparisler');
-        alert("Gece kapanışı yapıldı. Kasa sıfırlandı!");
+        alert("Gece kapanışı yapıldı. Kasa sıfırlandı.");
         kasaRaporuGoster();
       }
     }
