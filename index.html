@@ -103,7 +103,7 @@
       <div style="background:#fff3e0; padding:10px; border-radius:6px; margin:8px 0; border:1px solid #ffe0b2;">
         <div class="check-row" style="margin:0;">
           <input type="checkbox" id="chkVeresiye" onchange="veresiyeKutusuDegisti()">
-          <label for="chkVeresiye"><b style="color:#e65100;">Veresiye / Şirket Hesabı</b> (2 Nüsha Fiş Basar, POS/Nakit Yazmaz)</label>
+          <label for="chkVeresiye"><b style="color:#e65100;">Veresiye / Şirket Hesabı</b> (Ayrı Veresiye Yazıcısına Düşer)</label>
         </div>
         <button type="button" id="btnNormalOde" class="toggle-normal-btn" style="display:none;" onclick="normaleCevir()">Bu Sefer Normal Ödeyecek (Veresiye İptal)</button>
       </div>
@@ -147,7 +147,7 @@
     </div>
   </div>
 
-  <!-- 4. SEKME: REHBER & ADRES YÖNETİMİ (MANUEL EKLEME) -->
+  <!-- 4. SEKME: REHBER & ADRES YÖNETİMİ -->
   <div id="sekme-rehber" style="display:none;">
     <div class="box" style="border: 2px solid #1976d2;">
       <h3 style="margin-top:0; color:#1976d2;">Yeni Adres & Müşteri Kaydet</h3>
@@ -178,6 +178,10 @@
   </div>
 
   <script>
+    // IP TANIMLARI
+    const IP_KASA = "192.168.1.100";     // Ana kasa / Kurye fiş yazıcısı
+    const IP_VERESIYE = "192.168.1.104"; // Ayrı Veresiye / Muhasebe fiş yazıcısı
+
     let hazirlananSiparis = null;
     let hazirlananFisMetni = "";
 
@@ -201,7 +205,6 @@
       if (sekme === 'rehber') rehberiListele();
     }
 
-    // MANUEL MÜŞTERİ EKLEME FONKSİYONLARI
     function yeniMusteriTipiDegisti() {
       const tip = document.getElementById('yeniMusteriTipi').value;
       document.getElementById('yeniKisiFiyatAlani').style.display = (tip === 'TOSUNCU') ? 'block' : 'none';
@@ -235,7 +238,6 @@
       localStorage.setItem('musteriVeritabani', JSON.stringify(db));
       alert(`"${adres}" başarıyla rehbere kaydedildi!`);
 
-      // Formu sıfırla
       document.getElementById('yeniAdres').value = '';
       document.getElementById('yeniTel').value = '';
       document.getElementById('yeniKisiBasiFiyat').value = '';
@@ -244,7 +246,6 @@
       rehberiListele();
     }
 
-    // SİPARİŞ EKRANI ADRES SEÇİMİ
     function adresSecildi() {
       const girilenAdres = document.getElementById('adres').value.trim().toLowerCase();
       const db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
@@ -254,7 +255,6 @@
       if (db[girilenAdres]) {
         const kayit = db[girilenAdres];
         
-        // Telefonları Doldur
         if (kayit.telefonlar && kayit.telefonlar.length > 0) {
           numaraSelect.innerHTML = '';
           kayit.telefonlar.forEach(t => {
@@ -269,7 +269,6 @@
           numaraKutusu.style.display = 'none';
         }
 
-        // Müşteri Tipine Göre Alanları Doldur
         if (kayit.tip === 'VERESIYE') {
           document.getElementById('chkVeresiye').checked = true;
           document.getElementById('btnNormalOde').style.display = 'block';
@@ -386,7 +385,6 @@
       document.getElementById('netTutar').value = document.getElementById('hamTutar').value;
     }
 
-    // FİŞ ÖNİZLEME
     function onizlemeGoster() {
       const adres = document.getElementById('adres').value.trim();
       const tel = document.getElementById('tel').value.trim();
@@ -418,7 +416,6 @@
       fis += `${siparisMetni}\n`;
       fis += `--------------------------------\n`;
       
-      // Ödeme kısmı: Veresiye ise kuryeyi yanıltacak POS/Nakit basılmaz
       if (isVeresiye) {
         fis += `ODEME: VERESIYE / CARI HESAP\n`;
         fis += `(KURYEDEN UCRET ALINMAZ)\n`;
@@ -438,7 +435,7 @@
 
       if (isVeresiye) {
         fis += `--------------------------------\n`;
-        fis += `* VERESIYE SIPARIS (2 Nusha) *\n`;
+        fis += `* VERESIYE SIPARIS *\n`;
         fis += `Teslim Alan Imza: _____________\n`;
       }
       fis += `================================`;
@@ -468,18 +465,17 @@
       document.getElementById('onizlemeModal').style.display = 'none';
     }
 
-    function fisYazdir(metin) {
-      fetch('http://192.168.1.100:9100', {
+    function termalYaziciyaGonder(ip, metin) {
+      fetch(`http://${ip}:9100`, {
         method: 'POST',
         mode: 'no-cors',
-        body: metin + "\n\n\n\x1B\x69"
-      }).catch(err => console.log("Yazıcı tetiklendi", err));
+        body: metin + "\n\n\n\x1B\x69" // Fişi bas ve otomatik kes
+      }).catch(err => console.log(ip + " yazıcı tetiklendi", err));
     }
 
     function onaylandiVeYazdir() {
       onizlemeKapat();
 
-      // Müşteri veritabanına yeni telefon varsa ekle
       let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
       let adresKey = hazirlananSiparis.adres.toLowerCase();
       if (!db[adresKey]) {
@@ -490,20 +486,21 @@
       }
       localStorage.setItem('musteriVeritabani', JSON.stringify(db));
 
-      // Günlük siparişe kaydet
       let siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
-      // Fişi bas (Veresiye ise 2 kere basar)
-      fisYazdir(hazirlananFisMetni);
+      // 1. Kasa Yazıcısına Fişi Gönder (Kurye için)
+      termalYaziciyaGonder(IP_KASA, hazirlananFisMetni);
+
+      // 2. Eğer Veresiye İse: Ayrı Veresiye/Muhasebe Yazıcısına 2. Fişi Fırlat
       if (hazirlananSiparis.veresiye) {
-        setTimeout(() => fisYazdir(hazirlananFisMetni + "\n(SIRKET/MUHASEBE NUSHASI)"), 1000);
+        let muhasebeFisi = `=== VERESIYE / MUHASEBE ARSIV ===\n` + hazirlananFisMetni;
+        termalYaziciyaGonder(IP_VERESIYE, muhasebeFisi);
       }
 
-      alert("Sipariş sisteme işlendi ve yazdırıldı!");
+      alert("Sipariş kaydedildi ve ilgili yazıcılara fişleri basıldı!");
 
-      // Temizle
       document.getElementById('siparisMetni').value = '';
       document.getElementById('kisiSayisi').value = '';
       document.getElementById('kisiBasiFiyat').value = '';
