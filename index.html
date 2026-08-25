@@ -11,7 +11,7 @@
     .tab-btn.active { background: #d32f2f; }
     .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     input, textarea, select, button { width: 100%; padding: 10px; margin: 4px 0; font-size: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-    button.action { background: #2e7d32; color: white; border: none; font-weight: bold; padding: 14px; font-size: 16px; margin-top: 8px; }
+    button.action { background: #1976d2; color: white; border: none; font-weight: bold; padding: 14px; font-size: 16px; margin-top: 8px; cursor: pointer; }
     .row { display: flex; gap: 8px; }
     .check-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
     .check-row input { width: auto; margin: 0; }
@@ -21,6 +21,14 @@
     .badge-veresiye { background: #ffeb3b; color: #000; }
     .badge-tosuncu { background: #e91e63; color: white; }
     .report-box { background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
+
+    /* FİŞ ÖNİZLEME MODAL / POP-UP STİLİ */
+    .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
+    .modal-content { background: #fff; margin: 10% auto; padding: 15px; width: 90%; max-width: 380px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .receipt { background: #fff; border: 1px dashed #555; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 1.4; color: #000; white-space: pre-wrap; }
+    .modal-buttons { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-confirm { background: #2e7d32; color: white; border: none; font-weight: bold; padding: 12px; border-radius: 4px; flex: 1; cursor: pointer; }
+    .btn-cancel { background: #757575; color: white; border: none; font-weight: bold; padding: 12px; border-radius: 4px; flex: 1; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -39,7 +47,7 @@
       <input type="text" id="adres" list="adresListesi" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
       <datalist id="adresListesi"></datalist>
 
-      <!-- Bu adrese ait kayıtlı telefon numaraları listesi -->
+      <!-- Adrese ait kayıtlı telefonlar -->
       <div id="kayitliNumaralarKutusu" style="display:none; margin-top:5px;">
         <label style="font-size:13px; font-weight:bold;">Kayıtlı Numaralar:</label>
         <select id="kayitliNumaralar" onchange="numaraSecildi()"></select>
@@ -79,7 +87,7 @@
       </select>
 
       <div class="row" style="margin-top:6px;">
-        <input type="time" id="teslimSaati" placeholder="İleri Saat Teslimatı (Örn: 17:30)">
+        <input type="time" id="teslimSaati" placeholder="İleri Saat Teslimatı">
       </div>
 
       <div class="check-row">
@@ -92,7 +100,19 @@
         <label for="chkFiyatGizle">Fişte Fiyatı Gizle</label>
       </div>
 
-      <button class="action" onclick="siparisiKaydetVeYazdir()">SİPARİŞİ ONAYLA & YAZDIR</button>
+      <button class="action" onclick="onizlemeGoster()">FİŞİ ÖNİZLE & KONTROL ET</button>
+    </div>
+  </div>
+
+  <!-- FİŞ ÖNİZLEME POP-UP (MODAL) -->
+  <div id="onizlemeModal" class="modal">
+    <div class="modal-content">
+      <h4 style="margin-top:0; color:#1976d2; text-align:center;">FİŞ BASKI ÖNİZLEMESİ</h4>
+      <div id="termalFisIcerik" class="receipt"></div>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="onizlemeKapat()">DÜZENLE / GERİ</button>
+        <button class="btn-confirm" onclick="onaylandiVeYazdir()">YAZDIR & KAYDET</button>
+      </div>
     </div>
   </div>
 
@@ -109,17 +129,19 @@
     <div class="box">
       <h3>Kasa ve Gün Sonu Raporu</h3>
       <div class="report-box" id="kasaOzeti">Hesaplanıyor...</div>
-      <button style="background:#0288d1; color:white;" onclick="araRaporAl()">Öğle/Akşam Ara Raporunu Sıfırla (Saat 18-20)</button>
+      <button style="background:#0288d1; color:white;" onclick="araRaporAl()">Öğle/Akşam Ara Raporunu Al (Saat 18-20)</button>
       <button style="background:#d32f2f; color:white; margin-top:8px;" onclick="geceKapanisYap()">Gece Kapanışı Yap (12:30)</button>
     </div>
   </div>
 
   <script>
-    // Ön Tanımlı Anlaşmalı Kurumlar ve Menü Hakları
     const ANLASMALI_YERLER = {
       "cevre 3-5": { kisiBasi: 220, aciklama: "1 Kebap + 1 Yancı (Tatlı/İçecek)" },
       "ali raif": { kisiBasi: 240, aciklama: "Tosuncu Menü / Toplu Sipariş" }
     };
+
+    let hazirlananSiparis = null;
+    let hazirlananFisMetni = "";
 
     function sekmeDegistir(sekme) {
       document.getElementById('sekme-siparis').style.display = sekme === 'siparis' ? 'block' : 'none';
@@ -134,7 +156,6 @@
       if (sekme === 'kasa') kasaRaporuGoster();
     }
 
-    // Adres Otomatik Tamamlama & Telefon Eşleştirme
     function adresleriYukle() {
       const db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
       const datalist = document.getElementById('adresListesi');
@@ -152,7 +173,6 @@
       const numaraKutusu = document.getElementById('kayitliNumaralarKutusu');
       const numaraSelect = document.getElementById('kayitliNumaralar');
 
-      // Anlaşmalı yer kontrolü (Kişi başı otomatik tarife)
       for (let yer in ANLASMALI_YERLER) {
         if (girilenAdres.includes(yer)) {
           document.getElementById('kisiBasiFiyat').value = ANLASMALI_YERLER[yer].kisiBasi;
@@ -160,7 +180,6 @@
         }
       }
 
-      // Adrese ait telefonları listele
       if (db[girilenAdres] && db[girilenAdres].telefonlar.length > 0) {
         numaraSelect.innerHTML = '<option value="">-- Kayıtlı Numara Seçin --</option>';
         db[girilenAdres].telefonlar.forEach(t => {
@@ -195,16 +214,8 @@
       document.getElementById('netTutar').value = document.getElementById('hamTutar').value;
     }
 
-    // Termal Yazıcıya Basma
-    function fisYazdir(metin) {
-      fetch('http://192.168.1.100:9100', {
-        method: 'POST',
-        mode: 'no-cors',
-        body: metin + "\n\n\n\x1B\x69"
-      }).catch(err => console.log("Yazıcıya gönderildi (Ağ kontrolü)", err));
-    }
-
-    function siparisiKaydetVeYazdir() {
+    // FİŞ ÖNİZLEME OLUŞTURMA
+    function onizlemeGoster() {
       const adres = document.getElementById('adres').value.trim();
       const tel = document.getElementById('tel').value.trim();
       const siparisMetni = document.getElementById('siparisMetni').value.trim();
@@ -221,21 +232,43 @@
         return;
       }
 
-      // 1. Müşteri & Adres Veritabanını Güncelle
-      let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
-      let adresKey = adres.toLowerCase();
-      if (!db[adresKey]) db[adresKey] = { telefonlar: [] };
-      if (tel && !db[adresKey].telefonlar.includes(tel)) {
-        db[adresKey].telefonlar.push(tel);
-      }
-      localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-      adresleriYukle();
+      const saatStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-      // 2. Siparişi Günlük Listeye Kaydet
-      let siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
-      const yeniSiparis = {
+      // Önizleme Fiş Metni
+      let fis = `================================\n`;
+      fis += `     *** PAKET SERVIS ***       \n`;
+      fis += `================================\n`;
+      fis += `Saat: ${saatStr}\n`;
+      if (teslimSaati) fis += `** ISTENEN SAAT: ${teslimSaati} **\n`;
+      fis += `Adres: ${adres}\n`;
+      fis += `Tel  : ${tel || '-'}\n`;
+      if (kisiSayisi) fis += `Kisi : ${kisiSayisi} Kisi\n`;
+      fis += `--------------------------------\n`;
+      fis += `${siparisMetni}\n`;
+      fis += `--------------------------------\n`;
+      fis += `Odeme: ${odemeTipi}\n`;
+      
+      if (!isFiyatGizle) {
+        if (hamTutar !== netTutar && hamTutar > 0) {
+          fis += `Tutar  : ${hamTutar} TL\n`;
+          fis += `Iskonto: -${hamTutar - netTutar} TL\n`;
+        }
+        fis += `TOPLAM : ${netTutar} TL\n`;
+      } else {
+        fis += `FIYAT GIZLI (FATURALI/KURUM)\n`;
+      }
+
+      if (isVeresiye) {
+        fis += `--------------------------------\n`;
+        fis += `* VERESIYE (2 Nusha Basılacak) *\n`;
+        fis += `Teslim Alan Imza: _____________\n`;
+      }
+      fis += `================================`;
+
+      hazirlananFisMetni = fis;
+      hazirlananSiparis = {
         id: Date.now(),
-        saat: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        saat: saatStr,
         adres: adres,
         tel: tel || '-',
         metin: siparisMetni,
@@ -248,35 +281,51 @@
         fiyatGizli: isFiyatGizle,
         durum: 'Yolda / Kuryede'
       };
-      siparisler.push(yeniSiparis);
+
+      document.getElementById('termalFisIcerik').innerText = fis;
+      document.getElementById('onizlemeModal').style.display = 'block';
+    }
+
+    function onizlemeKapat() {
+      document.getElementById('onizlemeModal').style.display = 'none';
+    }
+
+    function fisYazdir(metin) {
+      fetch('http://192.168.1.100:9100', {
+        method: 'POST',
+        mode: 'no-cors',
+        body: metin + "\n\n\n\x1B\x69"
+      }).catch(err => console.log("Yazıcıya gönderildi:", err));
+    }
+
+    // ONAY VERİLDİĞİNDE ÇALIŞAN FONKSİYON
+    function onaylandiVeYazdir() {
+      onizlemeKapat();
+
+      // 1. Veritabanı Kaydı (Müşteri & Telefon)
+      let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
+      let adresKey = hazirlananSiparis.adres.toLowerCase();
+      if (!db[adresKey]) db[adresKey] = { telefonlar: [] };
+      if (hazirlananSiparis.tel !== '-' && !db[adresKey].telefonlar.includes(hazirlananSiparis.tel)) {
+        db[adresKey].telefonlar.push(hazirlananSiparis.tel);
+      }
+      localStorage.setItem('musteriVeritabani', JSON.stringify(db));
+      adresleriYukle();
+
+      // 2. Günlük Sipariş Listesine Ekle
+      let siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
+      siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
-      // 3. Fiş Metnini Oluştur
-      let fis = `*** PAKET SERVIS FISI ***\n`;
-      fis += `Tarih/Saat: ${yeniSiparis.saat}\n`;
-      if (teslimSaati) fis += `** ISTENEN SAAT: ${teslimSaati} **\n`;
-      fis += `Adres: ${adres}\n`;
-      fis += `Tel: ${tel}\n`;
-      if (kisiSayisi) fis += `Kisi Sayisi: ${kisiSayisi}\n`;
-      fis += `--------------------------------\n`;
-      fis += `${siparisMetni}\n`;
-      fis += `--------------------------------\n`;
-      fis += `Odeme: ${odemeTipi}\n`;
-      if (!isFiyatGizle) {
-        if (hamTutar !== netTutar) fis += `Tutar: ${hamTutar} TL (Iskonto Uygulandi)\n`;
-        fis += `TOPLAM TUTAR: ${netTutar} TL\n`;
-      }
-      if (isVeresiye) fis += `** VERESIYE SIPARIS - IMZA: _________ **\n`;
-
-      // 4. Yazdır (Veresiye ise 2 kere basar)
-      fisYazdir(fis);
-      if (isVeresiye) {
-        setTimeout(() => fisYazdir(fis + "\n(SIRKET NUSHASI)"), 1000);
+      // 3. Yazdır
+      fisYazdir(hazirlananFisMetni);
+      if (hazirlananSiparis.veresiye) {
+        setTimeout(() => fisYazdir(hazirlananFisMetni + "\n(SIRKET/MUHASEBE NUSHASI)"), 1000);
       }
 
-      alert("Sipariş sisteme kaydedildi ve fiş yazdırıldı!");
+      alert("Sipariş sisteme işlendi ve yazdırıldı!");
 
-      // Formu temizle
+      // Temizle
       document.getElementById('siparisMetni').value = '';
       document.getElementById('kisiSayisi').value = '';
       document.getElementById('kisiBasiFiyat').value = '';
@@ -287,7 +336,7 @@
       document.getElementById('chkFiyatGizle').checked = false;
     }
 
-    // GİDEN SİPARİŞLER (KURYE TAKİBİ)
+    // GİDEN SİPARİŞLER EKRANI
     function gidenSiparisleriListele() {
       const siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       const container = document.getElementById('siparisListesiKutusu');
@@ -371,7 +420,7 @@
     }
 
     function geceKapanisYap() {
-      if (confirm("Günü kapatmak ve bugünün siparişlerini arşivlemek istiyor musunuz?")) {
+      if (confirm("Günü kapatmak ve bugünün siparişlerini sıfırlamak istiyor musunuz?")) {
         localStorage.removeItem('gunlukSiparisler');
         alert("Gece kapanışı yapıldı. Kasa sıfırlandı!");
         kasaRaporuGoster();
