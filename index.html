@@ -20,6 +20,7 @@
     .badge { padding: 3px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-veresiye { background: #ffeb3b; color: #000; }
     .badge-tosuncu { background: #e91e63; color: white; }
+    .badge-hybrid { background: #9c27b0; color: white; }
     .report-box { background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
     .delete-btn { background: #c62828; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; width: auto; }
     .toggle-normal-btn { background: #ff9800; color: white; border: none; font-weight: bold; padding: 8px; border-radius: 4px; cursor: pointer; margin-top: 4px; }
@@ -49,7 +50,7 @@
       <h3>1. Adres & Müşteri Seçimi</h3>
       <input type="text" id="adres" autocomplete="off" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
 
-      <!-- Adrese ait kayıtlı telefonlar ve hızlı silme -->
+      <!-- Adrese ait kayıtlı telefonlar ve silme -->
       <div id="kayitliNumaralarKutusu" style="display:none; margin-top:5px;">
         <label style="font-size:13px; font-weight:bold;">Kayıtlı Numaralar:</label>
         <div style="display:flex; gap:6px; align-items:center;">
@@ -80,7 +81,7 @@
     <div class="box">
       <h3>4. Ödeme & Özel Durumlar</h3>
       
-      <!-- Ödeme Yöntemi Alanı -->
+      <!-- Ödeme Yöntemi -->
       <div id="odemeTipiKutusu">
         <label style="font-size:13px; font-weight:bold;">Ödeme Yöntemi:</label>
         <select id="odemeTipi">
@@ -156,9 +157,10 @@
       
       <label style="font-size:13px; font-weight:bold; margin-top:5px; display:block;">Müşteri / Hesap Türü:</label>
       <select id="yeniMusteriTipi" onchange="yeniMusteriTipiDegisti()">
-        <option value="NORMAL">Normal Müşteri (Standart Menü)</option>
-        <option value="TOSUNCU">Tosuncu (Kişi Başı Anlaşmalı)</option>
-        <option value="VERESIYE">Veresiye (Cari / Şirket Hesabı)</option>
+        <option value="NORMAL">Normal Müşteri (Standart Menü / Kapıda Ödeme)</option>
+        <option value="TOSUNCU">Tosuncu (Kişi Başı Anlaşmalı / Kapıda Ödeme)</option>
+        <option value="VERESIYE">Veresiye (Standart Menü / Cari Şirket Hesabı)</option>
+        <option value="TOSUNCU_VERESIYE">Tosuncu + Veresiye (Kişi Başı Anlaşmalı + Cari Hesap)</option>
       </select>
 
       <div id="yeniKisiFiyatAlani" style="display:none; margin-top:5px;">
@@ -178,9 +180,8 @@
   </div>
 
   <script>
-    // IP TANIMLARI
-    const IP_KASA = "192.168.1.100";     // Ana kasa / Kurye fiş yazıcısı
-    const IP_VERESIYE = "192.168.1.104"; // Ayrı Veresiye / Muhasebe fiş yazıcısı
+    const IP_KASA = "192.168.1.100";
+    const IP_VERESIYE = "192.168.1.104";
 
     let hazirlananSiparis = null;
     let hazirlananFisMetni = "";
@@ -207,7 +208,8 @@
 
     function yeniMusteriTipiDegisti() {
       const tip = document.getElementById('yeniMusteriTipi').value;
-      document.getElementById('yeniKisiFiyatAlani').style.display = (tip === 'TOSUNCU') ? 'block' : 'none';
+      const kisiGerekli = (tip === 'TOSUNCU' || tip === 'TOSUNCU_VERESIYE');
+      document.getElementById('yeniKisiFiyatAlani').style.display = kisiGerekli ? 'block' : 'none';
     }
 
     function manuelMusteriEkle() {
@@ -255,6 +257,7 @@
       if (db[girilenAdres]) {
         const kayit = db[girilenAdres];
         
+        // Telefonları Listele
         if (kayit.telefonlar && kayit.telefonlar.length > 0) {
           numaraSelect.innerHTML = '';
           kayit.telefonlar.forEach(t => {
@@ -269,17 +272,14 @@
           numaraKutusu.style.display = 'none';
         }
 
-        if (kayit.tip === 'VERESIYE') {
-          document.getElementById('chkVeresiye').checked = true;
-          document.getElementById('btnNormalOde').style.display = 'block';
-          document.getElementById('odemeTipiKutusu').style.display = 'none';
-        } else {
-          document.getElementById('chkVeresiye').checked = false;
-          document.getElementById('btnNormalOde').style.display = 'none';
-          document.getElementById('odemeTipiKutusu').style.display = 'block';
-        }
+        // Veresiye Durumu Kontrolü (Veresiye veya Tosuncu+Veresiye ise)
+        const isVeresiye = (kayit.tip === 'VERESIYE' || kayit.tip === 'TOSUNCU_VERESIYE');
+        document.getElementById('chkVeresiye').checked = isVeresiye;
+        document.getElementById('btnNormalOde').style.display = isVeresiye ? 'block' : 'none';
+        document.getElementById('odemeTipiKutusu').style.display = isVeresiye ? 'none' : 'block';
 
-        if (kayit.tip === 'TOSUNCU' && kayit.kisiBasi > 0) {
+        // Kişi Başı Ücret Kontrolü (Tosuncu veya Tosuncu+Veresiye ise)
+        if ((kayit.tip === 'TOSUNCU' || kayit.tip === 'TOSUNCU_VERESIYE') && kayit.kisiBasi > 0) {
           document.getElementById('kisiBasiFiyat').value = kayit.kisiBasi;
         }
       } else {
@@ -335,6 +335,7 @@
         let tipBadge = '<span class="badge" style="background:#90a4ae; color:white;">Normal</span>';
         if (m.tip === 'VERESIYE') tipBadge = '<span class="badge badge-veresiye">Veresiye</span>';
         if (m.tip === 'TOSUNCU') tipBadge = `<span class="badge badge-tosuncu">Tosuncu (${m.kisiBasi || 0} TL)</span>`;
+        if (m.tip === 'TOSUNCU_VERESIYE') tipBadge = `<span class="badge badge-hybrid">Tosuncu + Veresiye (${m.kisiBasi || 0} TL)</span>`;
 
         html += `
           <div style="border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; background:#fafafa;">
@@ -469,7 +470,7 @@
       fetch(`http://${ip}:9100`, {
         method: 'POST',
         mode: 'no-cors',
-        body: metin + "\n\n\n\x1B\x69" // Fişi bas ve otomatik kes
+        body: metin + "\n\n\n\x1B\x69"
       }).catch(err => console.log(ip + " yazıcı tetiklendi", err));
     }
 
@@ -490,16 +491,16 @@
       siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
-      // 1. Kasa Yazıcısına Fişi Gönder (Kurye için)
+      // 1. Kasa / Kurye Yazıcısına Bas
       termalYaziciyaGonder(IP_KASA, hazirlananFisMetni);
 
-      // 2. Eğer Veresiye İse: Ayrı Veresiye/Muhasebe Yazıcısına 2. Fişi Fırlat
+      // 2. Veresiye İse: Ayrı Veresiye / Muhasebe Yazıcısına Fırlat
       if (hazirlananSiparis.veresiye) {
         let muhasebeFisi = `=== VERESIYE / MUHASEBE ARSIV ===\n` + hazirlananFisMetni;
         termalYaziciyaGonder(IP_VERESIYE, muhasebeFisi);
       }
 
-      alert("Sipariş kaydedildi ve ilgili yazıcılara fişleri basıldı!");
+      alert("Sipariş kaydedildi ve fiş basıldı!");
 
       document.getElementById('siparisMetni').value = '';
       document.getElementById('kisiSayisi').value = '';
