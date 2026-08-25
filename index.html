@@ -3,123 +3,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mutfak Fiş Sistemi</title>
+  <title>Akıllı Hızlı Sipariş Sistemi</title>
   <style>
     body { font-family: sans-serif; padding: 15px; background: #eceff1; margin: 0; }
     .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    input, textarea, select, button { width: 100%; padding: 10px; margin: 4px 0; font-size: 16px; box-sizing: border-box; }
-    button { background: #d32f2f; color: white; border: none; font-weight: bold; border-radius: 4px; padding: 12px; cursor: pointer; }
-    .item-row { display: flex; gap: 5px; margin-bottom: 5px; }
-    .item-row select { flex: 1.5; }
-    .item-row input[type="text"] { flex: 2; }
-    .item-row input[type="number"] { flex: 0.8; }
+    input, textarea, button { width: 100%; padding: 12px; margin: 6px 0; font-size: 16px; box-sizing: border-box; }
+    textarea { font-family: monospace; font-size: 15px; resize: vertical; }
+    button { background: #d32f2f; color: white; border: none; font-weight: bold; border-radius: 6px; padding: 15px; cursor: pointer; }
+    .preview { background: #fafafa; border-left: 4px solid #1976d2; padding: 10px; margin-top: 10px; font-size: 14px; }
   </style>
 </head>
 <body>
 
   <div class="box">
-    <h3>Müşteri & Adres Bilgisi</h3>
-    <input type="tel" id="tel" placeholder="Telefon (05XX...)" oninput="musteriAra()">
-    <input type="text" id="ad" placeholder="Müşteri Adı Soyadı">
-    <textarea id="adres" rows="2" placeholder="Açık Adres / Bina / Kat / Daire"></textarea>
-  </div>
+    <h3>Hızlı Sipariş Girişi</h3>
+    
+    <!-- Telefon (İsteğe bağlı, girilirse adresi otomatik doldurur) -->
+    <input type="tel" id="tel" placeholder="Telefon No (Varsa girin, yoksa boş bırakın)" oninput="teldenAdresGetir()">
+    
+    <!-- Serbest Sipariş Metin Alanı -->
+    <textarea id="siparisMetni" rows="8" placeholder="Örnek Giriş:&#10;çevre 3-5&#10;1 iskender&#10;2 lahmacun&#10;3 kola&#10;not: acılı olsun" oninput="canliOnizleme()"></textarea>
 
-  <div class="box">
-    <h3>Sipariş Kalemleri</h3>
-    <div id="kalemler">
-      <div class="item-row">
-        <select class="istasyon">
-          <option value="192.168.1.101">Fırın (Lahmacun/Pide)</option>
-          <option value="192.168.1.102">Döner İstasyonu</option>
-          <option value="192.168.1.103">Ocak / Izgara</option>
-        </select>
-        <input type="text" class="urun" placeholder="Ürün">
-        <input type="number" class="adet" value="1" min="1">
-      </div>
-    </div>
-    <button type="button" style="background:#546e7a;" onclick="kalemEkle()">+ Ürün Ekle</button>
-  </div>
+    <!-- Dağıtım Önizlemesi -->
+    <div id="onizleme" class="preview" style="display:none;"></div>
 
-  <div class="box">
-    <textarea id="not" placeholder="Sipariş / Kurye Notu (Örn: Kapıda Kredi Kartı)"></textarea>
-    <button onclick="siparisYazdir()">YAZDIR & İSTASYONLARA GÖNDER</button>
+    <button onclick="akilliSiparisYazdir()">SİPARİŞİ DAĞIT & YAZDIR</button>
   </div>
 
   <script>
-    // Tarayıcı içi ücretsiz müşteri rehberi (Local Storage)
-    function musteriAra() {
-      const tel = document.getElementById('tel').value.trim();
-      const kayitlar = JSON.parse(localStorage.getItem('musteriler') || '{}');
-      if (kayitlar[tel]) {
-        document.getElementById('ad').value = kayitlar[tel].ad;
-        document.getElementById('adres').value = kayitlar[tel].adres;
+    // İstasyon Kuralları ve IP Adresleri
+    const YAZICILAR = {
+      FIRIN: "192.168.1.101",
+      DONER: "192.168.1.102",
+      OCAK:  "192.168.1.103",
+      KASA:  "192.168.1.100"
+    };
+
+    // Kelime Eşleştirme Sözlüğü
+    const KELIME_GRUPLARI = {
+      FIRIN: ["lahmacun", "pide", "kiymali", "kasarli", "kusbasili", "cantik"],
+      DONER: ["iskender", "doner", "döner", "durum", "dürüm", "porsiyon", "tombik", "gobit", "pilav ustu"],
+      OCAK:  ["kofte", "köfte", "tavuk", "sis", "şiş", "kanat", "pirzola", "adana", "urfa", "antrikot", "izgara", "ızgara"]
+    };
+
+    function istasyonBul(urunAdi) {
+      const u = urunAdi.toLowerCase();
+      for (const [istasyon, kelimeler] of Object.entries(KELIME_GRUPLARI)) {
+        if (kelimeler.some(k => u.includes(k))) return istasyon;
       }
+      return "KASA"; // Tanınmayan veya içecek gibi ürünler sadece kasaya/kuryeye düşer
     }
 
-    function kalemEkle() {
-      const div = document.createElement('div');
-      div.className = 'item-row';
-      div.innerHTML = `
-        <select class="istasyon">
-          <option value="192.168.1.101">Fırın (Lahmacun/Pide)</option>
-          <option value="192.168.1.102">Döner İstasyonu</option>
-          <option value="192.168.1.103">Ocak / Izgara</option>
-        </select>
-        <input type="text" class="urun" placeholder="Ürün">
-        <input type="number" class="adet" value="1" min="1">
-      `;
-      document.getElementById('kalemler').appendChild(div);
+    function metniAyristir(rawMetin) {
+      const satirlar = rawMetin.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      if (satirlar.length === 0) return null;
+
+      let adres = satirlar[0]; // İlk satır her zaman adres/müşteridir
+      let kalemler = [];
+      let notlar = [];
+
+      for (let i = 1; i < satirlar.length; i++) {
+        let satir = satirlar[i];
+        
+        // Not satırı kontrolü
+        if (satir.toLowerCase().startsWith("not:") || satir.toLowerCase().startsWith("not ")) {
+          notlar.push(satir.replace(/^not:?\s*/i, ''));
+          continue;
+        }
+
+        // Adet ve ürün adını ayır (Örn: "2 lahmacun" -> Adet: 2, Urun: "lahmacun")
+        let match = satir.match(/^(\d+)\s*(.*)$/);
+        let adet = match ? match[1] : 1;
+        let urun = match ? match[2] : satir;
+
+        kalemler.push({
+          adet: adet,
+          urun: urun,
+          istasyon: istasyonBul(urun)
+        });
+      }
+
+      return {
+        adres: adres,
+        kalemler: kalemler,
+        not: notlar.join(", ")
+      };
+    }
+
+    function canliOnizleme() {
+      const metin = document.getElementById('siparisMetni').value;
+      const veri = metniAyristir(metin);
+      const onizlemeKutusu = document.getElementById('onizleme');
+
+      if (!veri || veri.kalemler.length === 0) {
+        onizlemeKutusu.style.display = 'none';
+        return;
+      }
+
+      let html = `<b>Adres:</b> ${veri.adres}<br><b>Dağıtım Planı:</b><br>`;
+      veri.kalemler.forEach(k => {
+        html += `• ${k.adet}x ${k.urun} &rarr; <b>${k.istasyon}</b><br>`;
+      });
+      if (veri.not) html += `<b>Not:</b> ${veri.not}`;
+
+      onizlemeKutusu.innerHTML = html;
+      onizlemeKutusu.style.display = 'block';
+    }
+
+    function teldenAdresGetir() {
+      const tel = document.getElementById('tel').value.trim();
+      const musteriler = JSON.parse(localStorage.getItem('musteriler') || '{}');
+      if (musteriler[tel]) {
+        let mevcutMetin = document.getElementById('siparisMetni').value;
+        let satirlar = mevcutMetin.split('\n');
+        // İlk satırı kayıtlı adresle değiştir
+        satirlar[0] = musteriler[tel].adres;
+        document.getElementById('siparisMetni').value = satirlar.join('\n');
+        canliOnizleme();
+      }
     }
 
     function termalYaziciyaGonder(ip, metin) {
-      // Ağ yazıcısına standart ESC/POS ham veri yollar
       fetch(`http://${ip}:9100`, {
         method: 'POST',
         mode: 'no-cors',
-        body: metin + "\n\n\n\x1B\x69" // Fişi basıp kağıdı otomatik kesme komutu
+        body: metin + "\n\n\n\x1B\x69" // Yazdır ve kağıdı kes
       }).catch(err => console.log(ip + " yazdırılamadı:", err));
     }
 
-    function siparisYazdir() {
-      const tel = document.getElementById('tel').value;
-      const ad = document.getElementById('ad').value;
-      const adres = document.getElementById('adres').value;
-      const not = document.getElementById('not').value;
+    function akilliSiparisYazdir() {
+      const metin = document.getElementById('siparisMetni').value;
+      const tel = document.getElementById('tel').value.trim();
+      const veri = metniAyristir(metin);
 
-      // 1. Müşteriyi yerel hafızaya kaydet
-      if (tel) {
-        let musteriler = JSON.parse(localStorage.getItem('musteriler') || '{}');
-        musteriler[tel] = { ad: ad, adres: adres };
-        localStorage.setItem('musteriler', JSON.stringify(musteriler));
+      if (!veri) {
+        alert("Lütfen sipariş girin!");
+        return;
       }
 
-      // 2. Kalemleri istasyonlara göre grupla
-      const satirlar = document.querySelectorAll('.item-row');
+      // 1. Adresi hafızaya kaydet
+      let musteriler = JSON.parse(localStorage.getItem('musteriler') || '{}');
+      if (tel) {
+        musteriler[tel] = { adres: veri.adres };
+      } else {
+        musteriler["adres_" + veri.adres] = { adres: veri.adres };
+      }
+      localStorage.setItem('musteriler', JSON.stringify(musteriler));
+
+      // 2. Mutfak fişlerini hazırla ve ilgili yazıcılara fırlat
       let istasyonGrup = {};
-      let kuryeFisiMetni = `*** KURYE TESLIMAT FISI ***\nMusteri: ${ad}\nTel: ${tel}\nAdres: ${adres}\nNot: ${not}\n------------------------\n`;
+      let kuryeMetni = `*** KURYE TESLIMAT FISI ***\nAdres: ${veri.adres}\nTel: ${tel || '-'}\nNot: ${veri.not || '-'}\n------------------------\n`;
 
-      satirlar.forEach(row => {
-        const ip = row.querySelector('.istasyon').value;
-        const urun = row.querySelector('.urun').value;
-        const adet = row.querySelector('.adet').value;
-
-        if (urun) {
-          if (!istasyonGrup[ip]) istasyonGrup[ip] = [];
-          istasyonGrup[ip].push(`${adet} Adet ${urun}`);
-          kuryeFisiMetni += `${adet}x ${urun}\n`;
+      veri.kalemler.forEach(k => {
+        kuryeMetni += `${k.adet}x ${k.urun}\n`;
+        if (k.istasyon !== "KASA") {
+          if (!istasyonGrup[k.istasyon]) istasyonGrup[k.istasyon] = [];
+          istasyonGrup[k.istasyon].push(`${k.adet}x ${k.urun}`);
         }
       });
 
-      // 3. İlgili mutfak yazıcılarına sadece kendi siparişlerini yolla
-      for (const [ip, urunler] of Object.entries(istasyonGrup)) {
-        let mutfakFisi = `=== MUTFAK SIPARIS ===\nSaat: ${new Date().toLocaleTimeString()}\nNot: ${not}\n---------------------\n` + urunler.join('\n');
+      // Mutfak yazıcılarına gönder
+      for (const [istasyon, urunler] of Object.entries(istasyonGrup)) {
+        let ip = YAZICILAR[istasyon];
+        let mutfakFisi = `=== ${istasyon} FISI ===\nAdres: ${veri.adres}\nSaat: ${new Date().toLocaleTimeString()}\nNot: ${veri.not || '-'}\n---------------------\n` + urunler.join('\n');
         termalYaziciyaGonder(ip, mutfakFisi);
       }
 
-      // 4. Kasa/Kurye yazıcısına tüm adresi ve özeti bas (Örn Kasa IP: 192.168.1.100)
-      termalYaziciyaGonder("192.168.1.100", kuryeFisiMetni);
+      // Kasa/Kurye yazıcısına gönder
+      termalYaziciyaGonder(YAZICILAR.KASA, kuryeMetni);
 
-      alert("Siparişler yazıcılara iletildi ve müşteri kaydedildi!");
+      alert("Sipariş istasyonlara dağıtıldı ve yazdırıldı!");
+      document.getElementById('siparisMetni').value = '';
+      document.getElementById('tel').value = '';
+      document.getElementById('onizleme').style.display = 'none';
     }
   </script>
 </body>
