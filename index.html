@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mutfak Fiş Sistemi</title>
+  <style>
+    body { font-family: sans-serif; padding: 15px; background: #eceff1; margin: 0; }
+    .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    input, textarea, select, button { width: 100%; padding: 10px; margin: 4px 0; font-size: 16px; box-sizing: border-box; }
+    button { background: #d32f2f; color: white; border: none; font-weight: bold; border-radius: 4px; padding: 12px; cursor: pointer; }
+    .item-row { display: flex; gap: 5px; margin-bottom: 5px; }
+    .item-row select { flex: 1.5; }
+    .item-row input[type="text"] { flex: 2; }
+    .item-row input[type="number"] { flex: 0.8; }
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h3>Müşteri & Adres Bilgisi</h3>
+    <input type="tel" id="tel" placeholder="Telefon (05XX...)" oninput="musteriAra()">
+    <input type="text" id="ad" placeholder="Müşteri Adı Soyadı">
+    <textarea id="adres" rows="2" placeholder="Açık Adres / Bina / Kat / Daire"></textarea>
+  </div>
+
+  <div class="box">
+    <h3>Sipariş Kalemleri</h3>
+    <div id="kalemler">
+      <div class="item-row">
+        <select class="istasyon">
+          <option value="192.168.1.101">Fırın (Lahmacun/Pide)</option>
+          <option value="192.168.1.102">Döner İstasyonu</option>
+          <option value="192.168.1.103">Ocak / Izgara</option>
+        </select>
+        <input type="text" class="urun" placeholder="Ürün">
+        <input type="number" class="adet" value="1" min="1">
+      </div>
+    </div>
+    <button type="button" style="background:#546e7a;" onclick="kalemEkle()">+ Ürün Ekle</button>
+  </div>
+
+  <div class="box">
+    <textarea id="not" placeholder="Sipariş / Kurye Notu (Örn: Kapıda Kredi Kartı)"></textarea>
+    <button onclick="siparisYazdir()">YAZDIR & İSTASYONLARA GÖNDER</button>
+  </div>
+
+  <script>
+    // Tarayıcı içi ücretsiz müşteri rehberi (Local Storage)
+    function musteriAra() {
+      const tel = document.getElementById('tel').value.trim();
+      const kayitlar = JSON.parse(localStorage.getItem('musteriler') || '{}');
+      if (kayitlar[tel]) {
+        document.getElementById('ad').value = kayitlar[tel].ad;
+        document.getElementById('adres').value = kayitlar[tel].adres;
+      }
+    }
+
+    function kalemEkle() {
+      const div = document.createElement('div');
+      div.className = 'item-row';
+      div.innerHTML = `
+        <select class="istasyon">
+          <option value="192.168.1.101">Fırın (Lahmacun/Pide)</option>
+          <option value="192.168.1.102">Döner İstasyonu</option>
+          <option value="192.168.1.103">Ocak / Izgara</option>
+        </select>
+        <input type="text" class="urun" placeholder="Ürün">
+        <input type="number" class="adet" value="1" min="1">
+      `;
+      document.getElementById('kalemler').appendChild(div);
+    }
+
+    function termalYaziciyaGonder(ip, metin) {
+      // Ağ yazıcısına standart ESC/POS ham veri yollar
+      fetch(`http://${ip}:9100`, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: metin + "\n\n\n\x1B\x69" // Fişi basıp kağıdı otomatik kesme komutu
+      }).catch(err => console.log(ip + " yazdırılamadı:", err));
+    }
+
+    function siparisYazdir() {
+      const tel = document.getElementById('tel').value;
+      const ad = document.getElementById('ad').value;
+      const adres = document.getElementById('adres').value;
+      const not = document.getElementById('not').value;
+
+      // 1. Müşteriyi yerel hafızaya kaydet
+      if (tel) {
+        let musteriler = JSON.parse(localStorage.getItem('musteriler') || '{}');
+        musteriler[tel] = { ad: ad, adres: adres };
+        localStorage.setItem('musteriler', JSON.stringify(musteriler));
+      }
+
+      // 2. Kalemleri istasyonlara göre grupla
+      const satirlar = document.querySelectorAll('.item-row');
+      let istasyonGrup = {};
+      let kuryeFisiMetni = `*** KURYE TESLIMAT FISI ***\nMusteri: ${ad}\nTel: ${tel}\nAdres: ${adres}\nNot: ${not}\n------------------------\n`;
+
+      satirlar.forEach(row => {
+        const ip = row.querySelector('.istasyon').value;
+        const urun = row.querySelector('.urun').value;
+        const adet = row.querySelector('.adet').value;
+
+        if (urun) {
+          if (!istasyonGrup[ip]) istasyonGrup[ip] = [];
+          istasyonGrup[ip].push(`${adet} Adet ${urun}`);
+          kuryeFisiMetni += `${adet}x ${urun}\n`;
+        }
+      });
+
+      // 3. İlgili mutfak yazıcılarına sadece kendi siparişlerini yolla
+      for (const [ip, urunler] of Object.entries(istasyonGrup)) {
+        let mutfakFisi = `=== MUTFAK SIPARIS ===\nSaat: ${new Date().toLocaleTimeString()}\nNot: ${not}\n---------------------\n` + urunler.join('\n');
+        termalYaziciyaGonder(ip, mutfakFisi);
+      }
+
+      // 4. Kasa/Kurye yazıcısına tüm adresi ve özeti bas (Örn Kasa IP: 192.168.1.100)
+      termalYaziciyaGonder("192.168.1.100", kuryeFisiMetni);
+
+      alert("Siparişler yazıcılara iletildi ve müşteri kaydedildi!");
+    }
+  </script>
+</body>
+</html>
