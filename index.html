@@ -22,6 +22,7 @@
     .badge-tosuncu { background: #e91e63; color: white; }
     .report-box { background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
     .delete-btn { background: #c62828; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; width: auto; }
+    .toggle-normal-btn { background: #ff9800; color: white; border: none; font-weight: bold; padding: 8px; border-radius: 4px; cursor: pointer; margin-top: 4px; }
 
     /* FİŞ ÖNİZLEME POP-UP */
     .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
@@ -46,8 +47,7 @@
   <div id="sekme-siparis">
     <div class="box">
       <h3>1. Adres & Müşteri Seçimi</h3>
-      <input type="text" id="adres" list="adresListesi" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
-      <datalist id="adresListesi"></datalist>
+      <input type="text" id="adres" autocomplete="off" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
 
       <!-- Adrese ait kayıtlı telefonlar ve hızlı silme -->
       <div id="kayitliNumaralarKutusu" style="display:none; margin-top:5px;">
@@ -79,25 +79,33 @@
 
     <div class="box">
       <h3>4. Ödeme & Özel Durumlar</h3>
-      <label style="font-size:13px; font-weight:bold;">Ödeme Yöntemi:</label>
-      <select id="odemeTipi">
-        <option value="POS / Nakit">POS / Nakit (Varsayılan)</option>
-        <option value="Nakit">Nakit</option>
-        <option value="Kredi Kartı / POS">Kredi Kartı / POS</option>
-        <option value="Setcard">Setcard</option>
-        <option value="Multinet">Multinet</option>
-        <option value="Sodexo">Sodexo</option>
-        <option value="Ticket">Ticket</option>
-        <option value="Metropol">Metropol</option>
-      </select>
+      
+      <!-- Ödeme Yöntemi Alanı -->
+      <div id="odemeTipiKutusu">
+        <label style="font-size:13px; font-weight:bold;">Ödeme Yöntemi:</label>
+        <select id="odemeTipi">
+          <option value="POS / Nakit">POS / Nakit (Varsayılan)</option>
+          <option value="Nakit">Nakit</option>
+          <option value="Kredi Kartı / POS">Kredi Kartı / POS</option>
+          <option value="Setcard">Setcard</option>
+          <option value="Multinet">Multinet</option>
+          <option value="Sodexo">Sodexo</option>
+          <option value="Ticket">Ticket</option>
+          <option value="Metropol">Metropol</option>
+        </select>
+      </div>
 
       <div class="row" style="margin-top:6px;">
         <input type="time" id="teslimSaati" placeholder="İleri Saat Teslimatı">
       </div>
 
-      <div class="check-row">
-        <input type="checkbox" id="chkVeresiye">
-        <label for="chkVeresiye"><b>Veresiye Sipariş</b> (2 Nüsha Fiş Basar)</label>
+      <!-- Veresiye Seçeneği ve Normal Ödeme Toggle -->
+      <div style="background:#fff3e0; padding:10px; border-radius:6px; margin:8px 0; border:1px solid #ffe0b2;">
+        <div class="check-row" style="margin:0;">
+          <input type="checkbox" id="chkVeresiye" onchange="veresiyeKutusuDegisti()">
+          <label for="chkVeresiye"><b style="color:#e65100;">Veresiye / Şirket Hesabı</b> (2 Nüsha Fiş Basar, POS/Nakit Yazmaz)</label>
+        </div>
+        <button type="button" id="btnNormalOde" class="toggle-normal-btn" style="display:none;" onclick="normaleCevir()">Bu Sefer Normal Ödeyecek (Veresiye İptal)</button>
       </div>
 
       <div class="check-row">
@@ -139,11 +147,30 @@
     </div>
   </div>
 
-  <!-- 4. SEKME: REHBER & ADRES YÖNETİMİ -->
+  <!-- 4. SEKME: REHBER & ADRES YÖNETİMİ (MANUEL EKLEME) -->
   <div id="sekme-rehber" style="display:none;">
+    <div class="box" style="border: 2px solid #1976d2;">
+      <h3 style="margin-top:0; color:#1976d2;">Yeni Adres & Müşteri Kaydet</h3>
+      <input type="text" id="yeniAdres" placeholder="Adres / Firma Adı (Örn: Çevre 3-5, Ali Raif)">
+      <input type="tel" id="yeniTel" placeholder="Telefon Numarası">
+      
+      <label style="font-size:13px; font-weight:bold; margin-top:5px; display:block;">Müşteri / Hesap Türü:</label>
+      <select id="yeniMusteriTipi" onchange="yeniMusteriTipiDegisti()">
+        <option value="NORMAL">Normal Müşteri (Standart Menü)</option>
+        <option value="TOSUNCU">Tosuncu (Kişi Başı Anlaşmalı)</option>
+        <option value="VERESIYE">Veresiye (Cari / Şirket Hesabı)</option>
+      </select>
+
+      <div id="yeniKisiFiyatAlani" style="display:none; margin-top:5px;">
+        <input type="number" id="yeniKisiBasiFiyat" placeholder="Anlaşmalı Kişi Başı Tutar (TL)">
+      </div>
+
+      <button style="background:#2e7d32; color:white; font-weight:bold; margin-top:8px;" onclick="manuelMusteriEkle()">REHBERE KAYDET</button>
+    </div>
+
     <div class="box">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h3 style="margin:0;">Kayıtlı Adresler ve Numaralar</h3>
+        <h3 style="margin:0;">Kayıtlı Adresler ve Müşteriler</h3>
         <button class="delete-btn" onclick="tumRehberiTemizle()">Tüm Rehberi Sıfırla</button>
       </div>
       <div id="rehberListesi">Yükleniyor...</div>
@@ -151,11 +178,6 @@
   </div>
 
   <script>
-    const ANLASMALI_YERLER = {
-      "cevre 3-5": { kisiBasi: 220, aciklama: "1 Kebap + 1 Yancı (Tatlı/İçecek)" },
-      "ali raif": { kisiBasi: 240, aciklama: "Tosuncu Menü / Toplu Sipariş" }
-    };
-
     let hazirlananSiparis = null;
     let hazirlananFisMetni = "";
 
@@ -179,43 +201,104 @@
       if (sekme === 'rehber') rehberiListele();
     }
 
-    function adresleriYukle() {
-      const db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
-      const datalist = document.getElementById('adresListesi');
-      datalist.innerHTML = '';
-      for (const adres of Object.keys(db)) {
-        let opt = document.createElement('option');
-        opt.value = adres;
-        datalist.appendChild(opt);
-      }
+    // MANUEL MÜŞTERİ EKLEME FONKSİYONLARI
+    function yeniMusteriTipiDegisti() {
+      const tip = document.getElementById('yeniMusteriTipi').value;
+      document.getElementById('yeniKisiFiyatAlani').style.display = (tip === 'TOSUNCU') ? 'block' : 'none';
     }
 
+    function manuelMusteriEkle() {
+      const adres = document.getElementById('yeniAdres').value.trim();
+      const tel = document.getElementById('yeniTel').value.trim();
+      const tip = document.getElementById('yeniMusteriTipi').value;
+      const kisiFiyat = parseFloat(document.getElementById('yeniKisiBasiFiyat').value) || 0;
+
+      if (!adres) {
+        alert("Lütfen bir adres veya firma adı yazın!");
+        return;
+      }
+
+      let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
+      let key = adres.toLowerCase();
+
+      if (!db[key]) {
+        db[key] = { telefonlar: [], tip: tip, kisiBasi: kisiFiyat, adresGosterim: adres };
+      } else {
+        db[key].tip = tip;
+        db[key].kisiBasi = kisiFiyat;
+      }
+
+      if (tel && !db[key].telefonlar.includes(tel)) {
+        db[key].telefonlar.push(tel);
+      }
+
+      localStorage.setItem('musteriVeritabani', JSON.stringify(db));
+      alert(`"${adres}" başarıyla rehbere kaydedildi!`);
+
+      // Formu sıfırla
+      document.getElementById('yeniAdres').value = '';
+      document.getElementById('yeniTel').value = '';
+      document.getElementById('yeniKisiBasiFiyat').value = '';
+      document.getElementById('yeniMusteriTipi').value = 'NORMAL';
+      yeniMusteriTipiDegisti();
+      rehberiListele();
+    }
+
+    // SİPARİŞ EKRANI ADRES SEÇİMİ
     function adresSecildi() {
       const girilenAdres = document.getElementById('adres').value.trim().toLowerCase();
       const db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
       const numaraKutusu = document.getElementById('kayitliNumaralarKutusu');
       const numaraSelect = document.getElementById('kayitliNumaralar');
 
-      for (let yer in ANLASMALI_YERLER) {
-        if (girilenAdres.includes(yer)) {
-          document.getElementById('kisiBasiFiyat').value = ANLASMALI_YERLER[yer].kisiBasi;
-          break;
+      if (db[girilenAdres]) {
+        const kayit = db[girilenAdres];
+        
+        // Telefonları Doldur
+        if (kayit.telefonlar && kayit.telefonlar.length > 0) {
+          numaraSelect.innerHTML = '';
+          kayit.telefonlar.forEach(t => {
+            let opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = t;
+            numaraSelect.appendChild(opt);
+          });
+          numaraKutusu.style.display = 'block';
+          document.getElementById('tel').value = kayit.telefonlar[0];
+        } else {
+          numaraKutusu.style.display = 'none';
         }
-      }
 
-      if (db[girilenAdres] && db[girilenAdres].telefonlar.length > 0) {
-        numaraSelect.innerHTML = '';
-        db[girilenAdres].telefonlar.forEach(t => {
-          let opt = document.createElement('option');
-          opt.value = t;
-          opt.innerText = t;
-          numaraSelect.appendChild(opt);
-        });
-        numaraKutusu.style.display = 'block';
-        document.getElementById('tel').value = db[girilenAdres].telefonlar[0];
+        // Müşteri Tipine Göre Alanları Doldur
+        if (kayit.tip === 'VERESIYE') {
+          document.getElementById('chkVeresiye').checked = true;
+          document.getElementById('btnNormalOde').style.display = 'block';
+          document.getElementById('odemeTipiKutusu').style.display = 'none';
+        } else {
+          document.getElementById('chkVeresiye').checked = false;
+          document.getElementById('btnNormalOde').style.display = 'none';
+          document.getElementById('odemeTipiKutusu').style.display = 'block';
+        }
+
+        if (kayit.tip === 'TOSUNCU' && kayit.kisiBasi > 0) {
+          document.getElementById('kisiBasiFiyat').value = kayit.kisiBasi;
+        }
       } else {
         numaraKutusu.style.display = 'none';
       }
+    }
+
+    function veresiyeKutusuDegisti() {
+      const isVeresiye = document.getElementById('chkVeresiye').checked;
+      document.getElementById('odemeTipiKutusu').style.display = isVeresiye ? 'none' : 'block';
+      document.getElementById('btnNormalOde').style.display = isVeresiye ? 'block' : 'none';
+    }
+
+    function normaleCevir() {
+      document.getElementById('chkVeresiye').checked = false;
+      document.getElementById('odemeTipiKutusu').style.display = 'block';
+      document.getElementById('btnNormalOde').style.display = 'none';
+      alert("Bu sipariş normal tahsilat olarak ayarlandı (Kapıda POS/Nakit alınacak).");
     }
 
     function numaraSecildi() {
@@ -230,13 +313,9 @@
 
       if (db[girilenAdres] && silinecekTel) {
         db[girilenAdres].telefonlar = db[girilenAdres].telefonlar.filter(t => t !== silinecekTel);
-        if (db[girilenAdres].telefonlar.length === 0) {
-          delete db[girilenAdres];
-        }
         localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-        alert(silinecekTel + " numarası silindi.");
+        alert(silinecekTel + " silindi.");
         document.getElementById('tel').value = '';
-        adresleriYukle();
         adresSecildi();
       }
     }
@@ -247,20 +326,28 @@
       const adresler = Object.keys(db);
 
       if (adresler.length === 0) {
-        container.innerHTML = "Kayıtlı adres bulunmuyor.";
+        container.innerHTML = "Henüz kayıtlı müşteri bulunmuyor.";
         return;
       }
 
       let html = '';
-      adresler.forEach(adres => {
+      adresler.forEach(key => {
+        const m = db[key];
+        let tipBadge = '<span class="badge" style="background:#90a4ae; color:white;">Normal</span>';
+        if (m.tip === 'VERESIYE') tipBadge = '<span class="badge badge-veresiye">Veresiye</span>';
+        if (m.tip === 'TOSUNCU') tipBadge = `<span class="badge badge-tosuncu">Tosuncu (${m.kisiBasi || 0} TL)</span>`;
+
         html += `
           <div style="border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; background:#fafafa;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <b style="font-size:15px; color:#1976d2;">${adres}</b>
-              <button class="delete-btn" onclick="adresiKompleSil('${adres}')">Adresi Sil</button>
+              <div>
+                <b style="font-size:15px; color:#1976d2;">${m.adresGosterim || key}</b>
+                ${tipBadge}
+              </div>
+              <button class="delete-btn" onclick="adresiKompleSil('${key}')">Sil</button>
             </div>
             <div style="margin-top:6px; font-size:13px;">
-              <b>Numaralar:</b> ${db[adres].telefonlar.join(', ') || 'Numara yok'}
+              <b>Numaralar:</b> ${m.telefonlar && m.telefonlar.length > 0 ? m.telefonlar.join(', ') : 'Numara yok'}
             </div>
           </div>
         `;
@@ -268,20 +355,18 @@
       container.innerHTML = html;
     }
 
-    function adresiKompleSil(adres) {
-      if (confirm(`"${adres}" adresini ve tüm kayıtlı numaralarını silmek istiyor musunuz?`)) {
+    function adresiKompleSil(key) {
+      if (confirm(`Bu kaydı silmek istiyor musunuz?`)) {
         let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
-        delete db[adres];
+        delete db[key];
         localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-        adresleriYukle();
         rehberiListele();
       }
     }
 
     function tumRehberiTemizle() {
-      if (confirm("DİKKAT: Kayıtlı tüm adres ve telefon rehberi silinecek. Onaylıyor musunuz?")) {
+      if (confirm("DİKKAT: Kayıtlı tüm rehber silinecek. Onaylıyor musunuz?")) {
         localStorage.removeItem('musteriVeritabani');
-        adresleriYukle();
         rehberiListele();
         alert("Tüm rehber temizlendi.");
       }
@@ -301,6 +386,7 @@
       document.getElementById('netTutar').value = document.getElementById('hamTutar').value;
     }
 
+    // FİŞ ÖNİZLEME
     function onizlemeGoster() {
       const adres = document.getElementById('adres').value.trim();
       const tel = document.getElementById('tel').value.trim();
@@ -308,9 +394,9 @@
       const kisiSayisi = document.getElementById('kisiSayisi').value;
       const netTutar = parseFloat(document.getElementById('netTutar').value) || 0;
       const hamTutar = parseFloat(document.getElementById('hamTutar').value) || netTutar;
-      const odemeTipi = document.getElementById('odemeTipi').value;
-      const teslimSaati = document.getElementById('teslimSaati').value;
       const isVeresiye = document.getElementById('chkVeresiye').checked;
+      const odemeTipi = isVeresiye ? 'VERESIYE / CARI HESAP' : document.getElementById('odemeTipi').value;
+      const teslimSaati = document.getElementById('teslimSaati').value;
       const isFiyatGizle = document.getElementById('chkFiyatGizle').checked;
 
       if (!adres || !siparisMetni) {
@@ -331,7 +417,14 @@
       fis += `--------------------------------\n`;
       fis += `${siparisMetni}\n`;
       fis += `--------------------------------\n`;
-      fis += `Odeme: ${odemeTipi}\n`;
+      
+      // Ödeme kısmı: Veresiye ise kuryeyi yanıltacak POS/Nakit basılmaz
+      if (isVeresiye) {
+        fis += `ODEME: VERESIYE / CARI HESAP\n`;
+        fis += `(KURYEDEN UCRET ALINMAZ)\n`;
+      } else {
+        fis += `Odeme: ${odemeTipi}\n`;
+      }
       
       if (!isFiyatGizle) {
         if (hamTutar !== netTutar && hamTutar > 0) {
@@ -345,7 +438,7 @@
 
       if (isVeresiye) {
         fis += `--------------------------------\n`;
-        fis += `* VERESIYE (2 Nusha Basılacak) *\n`;
+        fis += `* VERESIYE SIPARIS (2 Nusha) *\n`;
         fis += `Teslim Alan Imza: _____________\n`;
       }
       fis += `================================`;
@@ -380,32 +473,37 @@
         method: 'POST',
         mode: 'no-cors',
         body: metin + "\n\n\n\x1B\x69"
-      }).catch(err => console.log("Yazıcıya gönderildi:", err));
+      }).catch(err => console.log("Yazıcı tetiklendi", err));
     }
 
     function onaylandiVeYazdir() {
       onizlemeKapat();
 
+      // Müşteri veritabanına yeni telefon varsa ekle
       let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
       let adresKey = hazirlananSiparis.adres.toLowerCase();
-      if (!db[adresKey]) db[adresKey] = { telefonlar: [] };
+      if (!db[adresKey]) {
+        db[adresKey] = { telefonlar: [], tip: hazirlananSiparis.veresiye ? 'VERESIYE' : 'NORMAL', adresGosterim: hazirlananSiparis.adres };
+      }
       if (hazirlananSiparis.tel !== '-' && !db[adresKey].telefonlar.includes(hazirlananSiparis.tel)) {
         db[adresKey].telefonlar.push(hazirlananSiparis.tel);
       }
       localStorage.setItem('musteriVeritabani', JSON.stringify(db));
-      adresleriYukle();
 
+      // Günlük siparişe kaydet
       let siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
+      // Fişi bas (Veresiye ise 2 kere basar)
       fisYazdir(hazirlananFisMetni);
       if (hazirlananSiparis.veresiye) {
         setTimeout(() => fisYazdir(hazirlananFisMetni + "\n(SIRKET/MUHASEBE NUSHASI)"), 1000);
       }
 
-      alert("Sipariş kaydedildi ve fiş basıldı!");
+      alert("Sipariş sisteme işlendi ve yazdırıldı!");
 
+      // Temizle
       document.getElementById('siparisMetni').value = '';
       document.getElementById('kisiSayisi').value = '';
       document.getElementById('kisiBasiFiyat').value = '';
@@ -414,6 +512,7 @@
       document.getElementById('teslimSaati').value = '';
       document.getElementById('chkVeresiye').checked = false;
       document.getElementById('chkFiyatGizle').checked = false;
+      veresiyeKutusuDegisti();
     }
 
     function gidenSiparisleriListele() {
@@ -504,8 +603,6 @@
         kasaRaporuGoster();
       }
     }
-
-    window.onload = adresleriYukle;
   </script>
 </body>
 </html>
