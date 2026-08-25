@@ -6,8 +6,8 @@
   <title>Gelişmiş Sipariş & Kasa Takip Sistemi</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 12px; background: #eceff1; margin: 0; color: #333; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .tab-btn { flex: 1; padding: 12px; background: #78909c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab-btn { flex: 1; padding: 10px 4px; background: #78909c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; }
     .tab-btn.active { background: #d32f2f; }
     .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     input, textarea, select, button { width: 100%; padding: 10px; margin: 4px 0; font-size: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
@@ -21,11 +21,12 @@
     .badge-veresiye { background: #ffeb3b; color: #000; }
     .badge-tosuncu { background: #e91e63; color: white; }
     .report-box { background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
+    .delete-btn { background: #c62828; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; width: auto; }
 
-    /* FİŞ ÖNİZLEME MODAL / POP-UP STİLİ */
+    /* FİŞ ÖNİZLEME POP-UP */
     .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
-    .modal-content { background: #fff; margin: 10% auto; padding: 15px; width: 90%; max-width: 380px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .receipt { background: #fff; border: 1px dashed #555; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 1.4; color: #000; white-space: pre-wrap; }
+    .modal-content { background: #fff; margin: 8% auto; padding: 15px; width: 90%; max-width: 380px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .receipt { background: #fff; border: 1px dashed #555; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.4; color: #000; white-space: pre-wrap; }
     .modal-buttons { display: flex; gap: 8px; margin-top: 12px; }
     .btn-confirm { background: #2e7d32; color: white; border: none; font-weight: bold; padding: 12px; border-radius: 4px; flex: 1; cursor: pointer; }
     .btn-cancel { background: #757575; color: white; border: none; font-weight: bold; padding: 12px; border-radius: 4px; flex: 1; cursor: pointer; }
@@ -38,6 +39,7 @@
     <button class="tab-btn active" onclick="sekmeDegistir('siparis')">Sipariş Al</button>
     <button class="tab-btn" onclick="sekmeDegistir('liste')">Giden Siparişler</button>
     <button class="tab-btn" onclick="sekmeDegistir('kasa')">Kasa & Rapor</button>
+    <button class="tab-btn" onclick="sekmeDegistir('rehber')">Rehber & Adresler</button>
   </div>
 
   <!-- 1. SEKME: SİPARİŞ ALMA EKRANI -->
@@ -47,10 +49,13 @@
       <input type="text" id="adres" list="adresListesi" placeholder="Adres Yazın (Örn: çevre 3-5, Ali Raif...)" oninput="adresSecildi()">
       <datalist id="adresListesi"></datalist>
 
-      <!-- Adrese ait kayıtlı telefonlar -->
+      <!-- Adrese ait kayıtlı telefonlar ve hızlı silme -->
       <div id="kayitliNumaralarKutusu" style="display:none; margin-top:5px;">
         <label style="font-size:13px; font-weight:bold;">Kayıtlı Numaralar:</label>
-        <select id="kayitliNumaralar" onchange="numaraSecildi()"></select>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="kayitliNumaralar" onchange="numaraSecildi()" style="flex:1;"></select>
+          <button type="button" class="delete-btn" onclick="seciliNumarayiSil()">Bu Numarayı Sil</button>
+        </div>
       </div>
       <input type="tel" id="tel" placeholder="Telefon Numarası (Yeni ise yazın)">
     </div>
@@ -104,7 +109,7 @@
     </div>
   </div>
 
-  <!-- FİŞ ÖNİZLEME POP-UP (MODAL) -->
+  <!-- FİŞ ÖNİZLEME POP-UP -->
   <div id="onizlemeModal" class="modal">
     <div class="modal-content">
       <h4 style="margin-top:0; color:#1976d2; text-align:center;">FİŞ BASKI ÖNİZLEMESİ</h4>
@@ -116,7 +121,7 @@
     </div>
   </div>
 
-  <!-- 2. SEKME: GİDEN SİPARİŞLER (KURYE TAKİBİ) -->
+  <!-- 2. SEKME: GİDEN SİPARİŞLER -->
   <div id="sekme-liste" style="display:none;">
     <div class="box">
       <h3>Bugün Giden Siparişler (Eskiden Yeniye)</h3>
@@ -124,13 +129,24 @@
     </div>
   </div>
 
-  <!-- 3. SEKME: KASA & RAPOR EKRANI -->
+  <!-- 3. SEKME: KASA & RAPOR -->
   <div id="sekme-kasa" style="display:none;">
     <div class="box">
       <h3>Kasa ve Gün Sonu Raporu</h3>
       <div class="report-box" id="kasaOzeti">Hesaplanıyor...</div>
       <button style="background:#0288d1; color:white;" onclick="araRaporAl()">Öğle/Akşam Ara Raporunu Al (Saat 18-20)</button>
       <button style="background:#d32f2f; color:white; margin-top:8px;" onclick="geceKapanisYap()">Gece Kapanışı Yap (12:30)</button>
+    </div>
+  </div>
+
+  <!-- 4. SEKME: REHBER & ADRES YÖNETİMİ -->
+  <div id="sekme-rehber" style="display:none;">
+    <div class="box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0;">Kayıtlı Adresler ve Numaralar</h3>
+        <button class="delete-btn" onclick="tumRehberiTemizle()">Tüm Rehberi Sıfırla</button>
+      </div>
+      <div id="rehberListesi">Yükleniyor...</div>
     </div>
   </div>
 
@@ -147,13 +163,20 @@
       document.getElementById('sekme-siparis').style.display = sekme === 'siparis' ? 'block' : 'none';
       document.getElementById('sekme-liste').style.display = sekme === 'liste' ? 'block' : 'none';
       document.getElementById('sekme-kasa').style.display = sekme === 'kasa' ? 'block' : 'none';
+      document.getElementById('sekme-rehber').style.display = sekme === 'rehber' ? 'block' : 'none';
       
       document.querySelectorAll('.tab-btn').forEach((b, i) => {
-        b.classList.toggle('active', (sekme === 'siparis' && i === 0) || (sekme === 'liste' && i === 1) || (sekme === 'kasa' && i === 2));
+        b.classList.toggle('active', 
+          (sekme === 'siparis' && i === 0) || 
+          (sekme === 'liste' && i === 1) || 
+          (sekme === 'kasa' && i === 2) || 
+          (sekme === 'rehber' && i === 3)
+        );
       });
 
       if (sekme === 'liste') gidenSiparisleriListele();
       if (sekme === 'kasa') kasaRaporuGoster();
+      if (sekme === 'rehber') rehberiListele();
     }
 
     function adresleriYukle() {
@@ -181,7 +204,7 @@
       }
 
       if (db[girilenAdres] && db[girilenAdres].telefonlar.length > 0) {
-        numaraSelect.innerHTML = '<option value="">-- Kayıtlı Numara Seçin --</option>';
+        numaraSelect.innerHTML = '';
         db[girilenAdres].telefonlar.forEach(t => {
           let opt = document.createElement('option');
           opt.value = t;
@@ -200,6 +223,70 @@
       if (secilen) document.getElementById('tel').value = secilen;
     }
 
+    function seciliNumarayiSil() {
+      const girilenAdres = document.getElementById('adres').value.trim().toLowerCase();
+      const silinecekTel = document.getElementById('kayitliNumaralar').value;
+      let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
+
+      if (db[girilenAdres] && silinecekTel) {
+        db[girilenAdres].telefonlar = db[girilenAdres].telefonlar.filter(t => t !== silinecekTel);
+        if (db[girilenAdres].telefonlar.length === 0) {
+          delete db[girilenAdres];
+        }
+        localStorage.setItem('musteriVeritabani', JSON.stringify(db));
+        alert(silinecekTel + " numarası silindi.");
+        document.getElementById('tel').value = '';
+        adresleriYukle();
+        adresSecildi();
+      }
+    }
+
+    function rehberiListele() {
+      const db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
+      const container = document.getElementById('rehberListesi');
+      const adresler = Object.keys(db);
+
+      if (adresler.length === 0) {
+        container.innerHTML = "Kayıtlı adres bulunmuyor.";
+        return;
+      }
+
+      let html = '';
+      adresler.forEach(adres => {
+        html += `
+          <div style="border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; background:#fafafa;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b style="font-size:15px; color:#1976d2;">${adres}</b>
+              <button class="delete-btn" onclick="adresiKompleSil('${adres}')">Adresi Sil</button>
+            </div>
+            <div style="margin-top:6px; font-size:13px;">
+              <b>Numaralar:</b> ${db[adres].telefonlar.join(', ') || 'Numara yok'}
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function adresiKompleSil(adres) {
+      if (confirm(`"${adres}" adresini ve tüm kayıtlı numaralarını silmek istiyor musunuz?`)) {
+        let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
+        delete db[adres];
+        localStorage.setItem('musteriVeritabani', JSON.stringify(db));
+        adresleriYukle();
+        rehberiListele();
+      }
+    }
+
+    function tumRehberiTemizle() {
+      if (confirm("DİKKAT: Kayıtlı tüm adres ve telefon rehberi silinecek. Onaylıyor musunuz?")) {
+        localStorage.removeItem('musteriVeritabani');
+        adresleriYukle();
+        rehberiListele();
+        alert("Tüm rehber temizlendi.");
+      }
+    }
+
     function tutarHesapla() {
       const kisi = parseFloat(document.getElementById('kisiSayisi').value) || 0;
       const kisiFiyat = parseFloat(document.getElementById('kisiBasiFiyat').value) || 0;
@@ -214,7 +301,6 @@
       document.getElementById('netTutar').value = document.getElementById('hamTutar').value;
     }
 
-    // FİŞ ÖNİZLEME OLUŞTURMA
     function onizlemeGoster() {
       const adres = document.getElementById('adres').value.trim();
       const tel = document.getElementById('tel').value.trim();
@@ -234,7 +320,6 @@
 
       const saatStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-      // Önizleme Fiş Metni
       let fis = `================================\n`;
       fis += `     *** PAKET SERVIS ***       \n`;
       fis += `================================\n`;
@@ -298,11 +383,9 @@
       }).catch(err => console.log("Yazıcıya gönderildi:", err));
     }
 
-    // ONAY VERİLDİĞİNDE ÇALIŞAN FONKSİYON
     function onaylandiVeYazdir() {
       onizlemeKapat();
 
-      // 1. Veritabanı Kaydı (Müşteri & Telefon)
       let db = JSON.parse(localStorage.getItem('musteriVeritabani') || '{}');
       let adresKey = hazirlananSiparis.adres.toLowerCase();
       if (!db[adresKey]) db[adresKey] = { telefonlar: [] };
@@ -312,20 +395,17 @@
       localStorage.setItem('musteriVeritabani', JSON.stringify(db));
       adresleriYukle();
 
-      // 2. Günlük Sipariş Listesine Ekle
       let siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       siparisler.push(hazirlananSiparis);
       localStorage.setItem('gunlukSiparisler', JSON.stringify(siparisler));
 
-      // 3. Yazdır
       fisYazdir(hazirlananFisMetni);
       if (hazirlananSiparis.veresiye) {
         setTimeout(() => fisYazdir(hazirlananFisMetni + "\n(SIRKET/MUHASEBE NUSHASI)"), 1000);
       }
 
-      alert("Sipariş sisteme işlendi ve yazdırıldı!");
+      alert("Sipariş kaydedildi ve fiş basıldı!");
 
-      // Temizle
       document.getElementById('siparisMetni').value = '';
       document.getElementById('kisiSayisi').value = '';
       document.getElementById('kisiBasiFiyat').value = '';
@@ -336,7 +416,6 @@
       document.getElementById('chkFiyatGizle').checked = false;
     }
 
-    // GİDEN SİPARİŞLER EKRANI
     function gidenSiparisleriListele() {
       const siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       const container = document.getElementById('siparisListesiKutusu');
@@ -385,7 +464,6 @@
       }
     }
 
-    // KASA VE RAPORLAMA
     function kasaRaporuGoster() {
       const siparisler = JSON.parse(localStorage.getItem('gunlukSiparisler') || '[]');
       let toplamCiro = 0;
